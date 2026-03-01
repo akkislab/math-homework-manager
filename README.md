@@ -9,7 +9,7 @@ A full-stack, cloud-deployed math homework platform built on Google Firebase.
 | AI Worksheet Generation | One Claude API call generates problems + personalizes PDFs for every student |
 | Teacher Dashboard | Student list, progress charts, bulk assign, submission review with grading |
 | Student Portal | View assignments, drag-and-drop submission upload, instant grade notifications |
-| Badge System | Automatic badges for streaks, perfect scores, completion milestones |
+| Badge System | Automatic badges for streaks, perfect scores, completion milestones, project |
 | In-App Notifications | Real-time Firestore listeners — no email/SMS cost |
 | Deadline Reminders | Scheduled Cloud Function runs daily at 08:00 UTC |
 
