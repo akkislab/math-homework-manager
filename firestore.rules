@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ────────────────────────────────────────────────────────────
+    function isAuth() { return request.auth != null; }
+    function isTeacher() {
+      return isAuth() && request.auth.token.role == 'teacher';
+    }
+    function isStudent() {
+      return isAuth() && request.auth.token.role == 'student';
+    }
+    function isOwner(uid) { return isAuth() && request.auth.uid == uid; }
+
+    // ─── Users ───────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isAuth();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isTeacher();
+      allow delete: if isTeacher();
+    }
+
+    // ─── Classes ─────────────────────────────────────────────────────────────
+    match /classes/{classId} {
+      allow read: if isAuth();
+      allow write: if isTeacher();
+    }
+
+    // ─── Worksheets (templates) ───────────────────────────────────────────────
+    match /worksheets/{worksheetId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isTeacher();
+    }
+
+    // ─── Assignments ─────────────────────────────────────────────────────────
+    match /assignments/{assignmentId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isTeacher();
+    }
+
+    // ─── Submissions ─────────────────────────────────────────────────────────
+    match /submissions/{submissionId} {
+      // Student can read/create their own; teacher can read and update all
+      allow read: if isTeacher()
+        || (isStudent() && resource.data.studentId == request.auth.uid);
+      allow create: if isStudent()
+        && request.resource.data.studentId == request.auth.uid;
+      allow update: if isTeacher()
+        || (isStudent()
+            && resource.data.studentId == request.auth.uid
+            && resource.data.status == 'pending');
+      allow delete: if isTeacher();
+    }
+
+    // ─── Notifications ────────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isAuth()
+        && resource.data.userId == request.auth.uid;
+      allow update: if isAuth()
+        && resource.data.userId == request.auth.uid;  // mark read
+      allow create, delete: if isTeacher();
+    }
+
+    // ─── Badges ───────────────────────────────────────────────────────────────
+    match /badges/{badgeId} {
+      allow read: if isAuth();
+      allow write: if isTeacher();
+    }
+
+    match /studentBadges/{uid} {
+      allow read: if isAuth();
+      allow write: if isTeacher();
+
+      // Subcollection — must be declared explicitly; rules don't cascade
+      match /earned/{badgeId} {
+        allow read: if isAuth();
+        allow write: if isTeacher();
+      }
+    }
+  }
+}
