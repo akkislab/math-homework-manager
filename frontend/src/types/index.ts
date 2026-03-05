@@ -63,14 +63,14 @@ export interface Assignment {
 
 export interface Submission {
   id: string;
-  assignmentId: string;
-  worksheetId: string;
+  assignmentId?: string;
+  worksheetId?: string;
   classId: string;
   studentId: string;
   teacherId: string;
   fileUrl: string;
   status: "pending" | "verified";
-  dueDate: Timestamp;
+  dueDate?: Timestamp;
   submittedAt: Timestamp;
   grade?: number;
   feedback?: string;
@@ -80,6 +80,31 @@ export interface Submission {
   /** AI-generated feedback shown to teacher as a suggestion */
   aiFeedback?: string;
   autoGradedAt?: Timestamp;
+  /** ID of batch assignment this submission belongs to (file-type) */
+  batchAssignmentId?: string;
+}
+
+export interface BatchAssignment {
+  id: string;
+  title: string;
+  description?: string;
+  batchId: string;
+  teacherId: string;
+  type: "ai" | "file";
+  fileUrl?: string;
+  worksheetId?: string;
+  totalStudents: number;
+  submittedCount: number;
+  dueDate: Timestamp;
+  createdAt: Timestamp;
+}
+
+export interface CreateFileAssignmentPayload {
+  title: string;
+  description?: string;
+  batchId: string;
+  fileUrl: string;
+  dueDate: string;
 }
 
 export interface Notification {

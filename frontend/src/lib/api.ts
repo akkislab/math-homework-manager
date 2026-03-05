@@ -6,6 +6,7 @@ import { functions } from "./firebase";
 import type {
   GenerateWorksheetPayload,
   VerifySubmissionPayload,
+  CreateFileAssignmentPayload,
 } from "../types";
 
 // ── generateWorksheet ─────────────────────────────────────────────────────────
@@ -40,7 +41,8 @@ export const assignWorksheet = async (payload: {
 
 // ── submitAssignment ───────────────────────────────────────────────────────────
 export const submitAssignment = async (payload: {
-  assignmentId: string;
+  assignmentId?: string;
+  batchAssignmentId?: string;
   fileUrl: string;
 }) => {
   const fn = httpsCallable<typeof payload, { submissionId: string }>(
@@ -78,6 +80,18 @@ export const createClass = async (payload: {
   name: string;
 }): Promise<{ classId: string }> => {
   const fn = httpsCallable<{ name: string }, { classId: string }>(functions, "createClass");
+  const result = await fn(payload);
+  return result.data;
+};
+
+// ── createFileAssignment ───────────────────────────────────────────────────────
+export const createFileAssignment = async (
+  payload: CreateFileAssignmentPayload
+): Promise<{ batchAssignmentId: string }> => {
+  const fn = httpsCallable<CreateFileAssignmentPayload, { batchAssignmentId: string }>(
+    functions,
+    "createFileAssignment"
+  );
   const result = await fn(payload);
   return result.data;
 };

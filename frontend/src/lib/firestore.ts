@@ -18,6 +18,7 @@ import {
 import { db } from "./firebase";
 import type {
   Assignment,
+  BatchAssignment,
   Class,
   Submission,
   UserProfile,
@@ -127,6 +128,69 @@ export const getStudentBadges = async (studentId: string): Promise<Badge[]> => {
     collection(db, "studentBadges", studentId, "earned")
   );
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Badge));
+};
+
+// ── Batch Assignments (real-time listener) ────────────────────────────────────
+export const listenBatchAssignments = (
+  batchId: string,
+  callback: (assignments: BatchAssignment[]) => void
+): Unsubscribe => {
+  const q = query(
+    collection(db, "batchAssignments"),
+    where("batchId", "==", batchId),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as BatchAssignment)));
+  });
+};
+
+// Get all submissions for a specific batch assignment (teacher "View Submissions")
+export const getSubmissionsForBatchAssignment = async (
+  batchAssignmentId: string
+): Promise<Submission[]> =>
+  fetchCollection<Submission>(
+    "submissions",
+    where("batchAssignmentId", "==", batchAssignmentId),
+    orderBy("submittedAt", "asc")
+  );
+
+// Get a student's own submission for a specific batch assignment (includes grade/status)
+export const getStudentBatchSubmission = async (
+  studentId: string,
+  batchAssignmentId: string
+): Promise<Submission | null> => {
+  const snap = await getDocs(
+    query(
+      collection(db, "submissions"),
+      where("studentId", "==", studentId),
+      where("batchAssignmentId", "==", batchAssignmentId),
+      limit(1)
+    )
+  );
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as Submission;
+};
+
+// Real-time listener for submissions of a batch assignment (teacher view)
+export const listenSubmissionsForBatchAssignment = (
+  batchAssignmentId: string,
+  callback: (submissions: Submission[]) => void
+): Unsubscribe => {
+  const q = query(
+    collection(db, "submissions"),
+    where("batchAssignmentId", "==", batchAssignmentId),
+    orderBy("submittedAt", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Submission)));
+  });
+};
+
+export const getStudentClassId = async (studentId: string): Promise<string | null> => {
+  const user = await getUser(studentId);
+  return user?.classId ?? null;
 };
 
 // ── Progress summary (for teacher dashboard) ─────────────────────────────────

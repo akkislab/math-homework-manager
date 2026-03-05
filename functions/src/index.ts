@@ -11,6 +11,7 @@ import {
   VerifySubmissionRequest,
   CreateClassRequest,
   AddStudentRequest,
+  CreateFileAssignmentRequest,
 } from "./types";
 
 admin.initializeApp();
@@ -49,7 +50,13 @@ export const generateWorksheet = onCall(
       throw new HttpsError("invalid-argument", "numProblems must be 1–20.");
     }
 
-    return generateWorksheetAndAssign(req, request.auth!.uid);
+    try {
+      return await generateWorksheetAndAssign(req, request.auth!.uid);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("generateWorksheet error:", msg);
+      throw new HttpsError("internal", msg);
+    }
   }
 );
 
@@ -91,64 +98,121 @@ export const assignWorksheet = onCall(
 
 // ────────────────────────────────────────────────────────────────────────────
 // 3. submitAssignment
-//    Student marks their assignment as submitted (after uploading file)
+//    Student marks their assignment as submitted (after uploading file).
+//    Accepts either assignmentId (AI worksheet) or batchAssignmentId (file upload).
 // ────────────────────────────────────────────────────────────────────────────
 export const submitAssignment = onCall(
   { region: REGION },
   async (request) => {
     requireAuth(request.auth?.uid);
 
-    const { assignmentId, fileUrl } = request.data as {
-      assignmentId: string;
+    const { assignmentId, batchAssignmentId, fileUrl } = request.data as {
+      assignmentId?: string;
+      batchAssignmentId?: string;
       fileUrl: string;
     };
 
-    const assignRef = db.collection("assignments").doc(assignmentId);
-    const assignSnap = await assignRef.get();
-
-    if (!assignSnap.exists) {
-      throw new HttpsError("not-found", "Assignment not found.");
+    if (!fileUrl) {
+      throw new HttpsError("invalid-argument", "fileUrl is required.");
     }
-    const assignment = assignSnap.data()!;
-    if (assignment.studentId !== request.auth!.uid) {
-      throw new HttpsError("permission-denied", "Not your assignment.");
-    }
-    if (assignment.status === "verified") {
-      throw new HttpsError("failed-precondition", "Assignment already verified.");
+    if (!assignmentId && !batchAssignmentId) {
+      throw new HttpsError("invalid-argument", "assignmentId or batchAssignmentId is required.");
     }
 
-    // Create submission document
+    const studentId = request.auth!.uid;
     const submissionRef = db.collection("submissions").doc();
     const batch = db.batch();
 
-    batch.set(submissionRef, {
-      id: submissionRef.id,
-      assignmentId,
-      worksheetId: assignment.worksheetId,
-      classId: assignment.classId,
-      studentId: request.auth!.uid,
-      teacherId: assignment.teacherId,
-      fileUrl,
-      status: "pending",
-      dueDate: assignment.dueDate,
-      submittedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    if (batchAssignmentId) {
+      // ── File-type batch assignment path ────────────────────────────────────
+      const batchAssignRef = db.collection("batchAssignments").doc(batchAssignmentId);
+      const batchAssignSnap = await batchAssignRef.get();
+      if (!batchAssignSnap.exists) {
+        throw new HttpsError("not-found", "Batch assignment not found.");
+      }
+      const batchAssign = batchAssignSnap.data()!;
 
-    // Update assignment status
-    batch.update(assignRef, { status: "submitted", submissionId: submissionRef.id });
+      // Guard against duplicate submission
+      const existingSnap = await db
+        .collection("submissions")
+        .where("batchAssignmentId", "==", batchAssignmentId)
+        .where("studentId", "==", studentId)
+        .limit(1)
+        .get();
+      if (!existingSnap.empty) {
+        throw new HttpsError("failed-precondition", "Already submitted this assignment.");
+      }
 
-    // Notify teacher
-    const notifRef = db.collection("notifications").doc();
-    batch.set(notifRef, {
-      id: notifRef.id,
-      userId: assignment.teacherId,
-      type: "new_submission",
-      title: "New Submission",
-      body: `A student submitted assignment #${assignmentId.slice(0, 6)}`,
-      link: `/teacher/submissions/${submissionRef.id}`,
-      read: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      batch.set(submissionRef, {
+        id: submissionRef.id,
+        batchAssignmentId,
+        classId: batchAssign.batchId,
+        studentId,
+        teacherId: batchAssign.teacherId,
+        fileUrl,
+        status: "pending",
+        submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Increment submittedCount on batchAssignment
+      batch.update(batchAssignRef, {
+        submittedCount: admin.firestore.FieldValue.increment(1),
+      });
+
+      // Notify teacher
+      const notifRef = db.collection("notifications").doc();
+      batch.set(notifRef, {
+        id: notifRef.id,
+        userId: batchAssign.teacherId,
+        type: "new_submission",
+        title: "New Submission",
+        body: `A student submitted "${batchAssign.title}"`,
+        link: `/teacher/submissions/${submissionRef.id}`,
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      // ── AI worksheet assignment path (existing behavior) ───────────────────
+      const assignRef = db.collection("assignments").doc(assignmentId!);
+      const assignSnap = await assignRef.get();
+      if (!assignSnap.exists) {
+        throw new HttpsError("not-found", "Assignment not found.");
+      }
+      const assignment = assignSnap.data()!;
+      if (assignment.studentId !== studentId) {
+        throw new HttpsError("permission-denied", "Not your assignment.");
+      }
+      if (assignment.status === "verified") {
+        throw new HttpsError("failed-precondition", "Assignment already verified.");
+      }
+
+      batch.set(submissionRef, {
+        id: submissionRef.id,
+        assignmentId: assignmentId!,
+        worksheetId: assignment.worksheetId,
+        classId: assignment.classId,
+        studentId,
+        teacherId: assignment.teacherId,
+        fileUrl,
+        status: "pending",
+        dueDate: assignment.dueDate,
+        submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      batch.update(assignRef, { status: "submitted", submissionId: submissionRef.id });
+
+      const notifRef = db.collection("notifications").doc();
+      batch.set(notifRef, {
+        id: notifRef.id,
+        userId: assignment.teacherId,
+        type: "new_submission",
+        title: "New Submission",
+        body: `A student submitted assignment #${assignmentId!.slice(0, 6)}`,
+        link: `/teacher/submissions/${submissionRef.id}`,
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
 
     await batch.commit();
     return { submissionId: submissionRef.id };
@@ -187,11 +251,13 @@ export const verifySubmission = onCall(
       verifiedBy: request.auth!.uid,
     });
 
-    // Update assignment status
-    batch.update(db.collection("assignments").doc(submission.assignmentId), {
-      status: "verified",
-      grade,
-    });
+    // Update assignment status (only for AI worksheet assignments)
+    if (submission.assignmentId) {
+      batch.update(db.collection("assignments").doc(submission.assignmentId), {
+        status: "verified",
+        grade,
+      });
+    }
 
     // Notify student of grade
     const notifRef = db.collection("notifications").doc();
@@ -224,8 +290,13 @@ export const verifySubmission = onCall(
 
     await batch.commit();
 
-    // Evaluate automatic badges after grading
-    const newBadges = await evaluateAndAwardBadges(submission.studentId);
+    // Evaluate automatic badges after grading — non-fatal if it fails
+    let newBadges: string[] = [];
+    try {
+      newBadges = await evaluateAndAwardBadges(submission.studentId);
+    } catch (badgeErr) {
+      console.error("Badge evaluation failed (non-fatal):", badgeErr);
+    }
 
     return { success: true, newBadges };
   }
@@ -360,7 +431,74 @@ export const addStudentToClass = onCall(
 );
 
 // ────────────────────────────────────────────────────────────────────────────
-// 8. gradeNewSubmission  — Firestore trigger
+// 8. createFileAssignment
+//    Teacher uploads a file and assigns it to a whole batch
+// ────────────────────────────────────────────────────────────────────────────
+export const createFileAssignment = onCall(
+  { region: REGION },
+  async (request) => {
+    requireAuth(request.auth?.uid);
+    requireTeacher(request.auth?.token as admin.auth.DecodedIdToken | undefined);
+
+    const { title, description, batchId, fileUrl, dueDate } =
+      request.data as CreateFileAssignmentRequest;
+
+    if (!title?.trim() || !batchId || !fileUrl || !dueDate) {
+      throw new HttpsError(
+        "invalid-argument",
+        "title, batchId, fileUrl, and dueDate are required."
+      );
+    }
+
+    const classSnap = await db.collection("classes").doc(batchId).get();
+    if (!classSnap.exists) {
+      throw new HttpsError("not-found", "Class not found.");
+    }
+    if (classSnap.data()!.teacherId !== request.auth!.uid) {
+      throw new HttpsError("permission-denied", "Not your class.");
+    }
+
+    const studentIds: string[] = classSnap.data()!.studentIds ?? [];
+
+    const batchAssignmentRef = db.collection("batchAssignments").doc();
+    const batch = db.batch();
+
+    batch.set(batchAssignmentRef, {
+      id: batchAssignmentRef.id,
+      title: title.trim(),
+      description: description?.trim() ?? "",
+      batchId,
+      teacherId: request.auth!.uid,
+      type: "file",
+      fileUrl,
+      totalStudents: studentIds.length,
+      submittedCount: 0,
+      dueDate: admin.firestore.Timestamp.fromDate(new Date(dueDate)),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Notify all students in the class
+    for (const studentId of studentIds) {
+      const notifRef = db.collection("notifications").doc();
+      batch.set(notifRef, {
+        id: notifRef.id,
+        userId: studentId,
+        type: "new_assignment",
+        title: "New Assignment",
+        body: `"${title.trim()}" is due ${new Date(dueDate).toLocaleDateString()}`,
+        link: "/student/portal",
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+    return { batchAssignmentId: batchAssignmentRef.id };
+  }
+);
+
+// ────────────────────────────────────────────────────────────────────────────
+// 9. gradeNewSubmission  — Firestore trigger
 //    Automatically grades a submission with AI when it is first created
 // ────────────────────────────────────────────────────────────────────────────
 export const gradeNewSubmission = onDocumentCreated(
@@ -379,7 +517,7 @@ export const gradeNewSubmission = onDocumentCreated(
 );
 
 // ────────────────────────────────────────────────────────────────────────────
-// 9. checkDeadlines  — runs daily at 08:00 UTC
+// 10. checkDeadlines  — runs daily at 08:00 UTC
 //    Sends in-app reminders for assignments due within 24 hours
 // ────────────────────────────────────────────────────────────────────────────
 export const checkDeadlines = onSchedule(

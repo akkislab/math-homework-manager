@@ -30,6 +30,7 @@ export interface GenerateWorksheetResponse {
   worksheetId: string;
   assignmentIds: string[];
   pdfUrls: string[];
+  batchAssignmentId?: string;
 }
 
 export interface AssignWorksheetRequest {
@@ -62,6 +63,29 @@ export interface AutoGradeRequest {
 export interface AutoGradeResponse {
   suggestedGrade: number;
   feedback: string;
+}
+
+export interface BatchAssignment {
+  id: string;
+  title: string;
+  description?: string;
+  batchId: string;
+  teacherId: string;
+  type: "ai" | "file";
+  fileUrl?: string;
+  worksheetId?: string;
+  totalStudents: number;
+  submittedCount: number;
+  dueDate: FirebaseFirestore.Timestamp;
+  createdAt: FirebaseFirestore.Timestamp;
+}
+
+export interface CreateFileAssignmentRequest {
+  title: string;
+  description?: string;
+  batchId: string;
+  fileUrl: string;
+  dueDate: string; // ISO string
 }
 
 export type UserRole = 'teacher' | 'student';

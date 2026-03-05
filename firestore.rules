@@ -61,6 +61,12 @@ service cloud.firestore {
       allow create, delete: if isTeacher();
     }
 
+    // ─── Batch Assignments ────────────────────────────────────────────────────
+    match /batchAssignments/{id} {
+      allow read: if isAuth();
+      allow write: if isTeacher();
+    }
+
     // ─── Badges ───────────────────────────────────────────────────────────────
     match /badges/{badgeId} {
       allow read: if isAuth();

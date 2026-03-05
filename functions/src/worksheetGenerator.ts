@@ -1,9 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
 import * as admin from "firebase-admin";
+import { getDownloadURL } from "firebase-admin/storage";
 import { buildWorksheetPDF } from "./pdfGenerator";
 import { WorksheetData, GenerateWorksheetRequest, GenerateWorksheetResponse } from "./types";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Lazily initialized so the secret env var is available at call time, not module load time
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!_client) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "ANTHROPIC_API_KEY is not set. Run: firebase functions:secrets:set ANTHROPIC_API_KEY"
+      );
+    }
+    _client = new Anthropic({ apiKey });
+  }
+  return _client;
+}
 
 // ── Prompt factory ────────────────────────────────────────────────────────────
 function buildPrompt(req: GenerateWorksheetRequest): string {
@@ -53,7 +67,7 @@ function parseWorksheet(raw: string): WorksheetData {
   return parsed;
 }
 
-// ── Upload a buffer to Firebase Storage and return a signed URL ──────────────
+// ── Upload a buffer to Firebase Storage and return a download URL ─────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function uploadPDF(
   bucket: any,
@@ -61,14 +75,13 @@ async function uploadPDF(
   storagePath: string
 ): Promise<string> {
   const file = bucket.file(storagePath);
-  await file.save(buffer, { contentType: "application/pdf", resumable: false });
-
-  // Signed URL valid for 365 days (suitable for school year)
-  const [url] = await file.getSignedUrl({
-    action: "read",
-    expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+  await file.save(buffer, {
+    contentType: "application/pdf",
+    resumable: false,
+    metadata: { firebaseStorageDownloadTokens: crypto.randomUUID() },
   });
-  return url;
+  // getDownloadURL uses Firebase's token-based URL — no signBlob IAM role needed
+  return getDownloadURL(file);
 }
 
 // ── Main generator (called by Cloud Function) ────────────────────────────────
@@ -80,7 +93,7 @@ export async function generateWorksheetAndAssign(
   const bucket = admin.storage().bucket();
 
   // ── 1. ONE AI call for all students (cost optimized) ──────────────────────
-  const message = await client.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-opus-4-6",
     max_tokens: 4096,
     messages: [{ role: "user", content: buildPrompt(req) }],
@@ -174,9 +187,25 @@ export async function generateWorksheetAndAssign(
 
   await batch.commit();
 
+  // ── 5. Write a batchAssignments summary doc ────────────────────────────────
+  const batchAssignmentRef = db.collection("batchAssignments").doc();
+  await batchAssignmentRef.set({
+    id: batchAssignmentRef.id,
+    title: req.title ?? `${req.topic} Worksheet`,
+    batchId: req.classId,
+    teacherId: teacherUid,
+    type: "ai",
+    worksheetId: worksheetRef.id,
+    totalStudents: studentIds.length,
+    submittedCount: 0,
+    dueDate: admin.firestore.Timestamp.fromDate(new Date(req.dueDate)),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
   return {
     worksheetId: worksheetRef.id,
     assignmentIds,
     pdfUrls,
+    batchAssignmentId: batchAssignmentRef.id,
   };
 }
