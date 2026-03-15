@@ -6,6 +6,7 @@ import {
   loginWithGoogle,
   registerWithEmail,
 } from "../../hooks/useAuth";
+import AssignSmartLogo from "../../components/shared/AssignSmartLogo";
 import type { UserRole } from "../../types";
 
 type Mode = "login" | "register";
@@ -43,7 +44,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginWithGoogle();
-      router.replace("/onboarding"); // Role selection after Google login
+      router.replace("/onboarding");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Google sign-in failed.");
     } finally {
@@ -52,26 +53,73 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl p-8">
-          {/* Logo */}
-          <div className="text-center mb-6">
-            <div className="text-5xl mb-2">🧮</div>
-            <h1 className="text-2xl font-bold text-gray-900">MathClass</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {mode === "login" ? "Sign in to your account" : "Create your account"}
-            </p>
+    <div className="flex min-h-screen">
+
+      {/* ── Left decorative panel (desktop only) ───────────────────────── */}
+      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden flex-col justify-between p-14 select-none" style={{ background: 'linear-gradient(135deg, #052e16 0%, #0f2d1f 50%, #0a1f30 100%)' }}>
+
+        {/* Floating math symbols — atmosphere layer */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <span className="absolute top-[8%]  left-[6%]  font-heading text-[9rem]  text-green-400 leading-none opacity-20 rotate-[-10deg] animate-float" style={{ animationDelay: "0s" }}>π</span>
+          <span className="absolute top-[42%] left-[46%] font-heading text-[22rem] text-green-400 leading-none opacity-[0.06] -translate-x-1/2 -translate-y-1/2">Σ</span>
+          <span className="absolute bottom-[12%] left-[10%] font-heading text-8xl  text-green-500 leading-none opacity-15 rotate-[8deg]  animate-float" style={{ animationDelay: "1.2s" }}>∫</span>
+          <span className="absolute top-[18%] right-[8%]  font-heading text-9xl  text-green-400 leading-none opacity-15 rotate-12   animate-float" style={{ animationDelay: "0.6s" }}>√</span>
+          <span className="absolute bottom-[28%] right-[6%] font-heading text-7xl  text-green-400 leading-none opacity-12 -rotate-6  animate-float" style={{ animationDelay: "2s" }}>Δ</span>
+          <span className="absolute top-[62%]  right-[22%] font-heading text-5xl  text-cyan-400 leading-none opacity-10 rotate-3">∞</span>
+          <span className="absolute top-[30%]  left-[20%]  font-heading text-4xl  text-cyan-500 leading-none opacity-10 -rotate-12">÷</span>
+        </div>
+
+        {/* Main tagline */}
+        <div className="relative z-10">
+          <h2 className="font-heading text-5xl xl:text-6xl font-semibold text-white leading-tight mb-5">
+            Where numbers<br />come alive.
+          </h2>
+          <p className="text-green-200/70 text-base leading-relaxed max-w-sm">
+            AI-generated worksheets, instant grading, and real-time progress tracking — built for modern math classrooms.
+          </p>
+        </div>
+
+        {/* Bottom stats */}
+        <div className="relative z-10 flex gap-10">
+          {[
+            { value: "500+", label: "Students per teacher" },
+            { value: "<10s", label: "AI response time" },
+            { value: "6+",   label: "Achievement badges" },
+          ].map((s) => (
+            <div key={s.label}>
+              <p className="font-heading text-4xl font-semibold text-white">{s.value}</p>
+              <p className="text-green-300/60 text-sm mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right form panel ────────────────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-14" style={{ background: 'rgba(15,23,42,0.95)' }}>
+        <div className="w-full max-w-[380px] animate-fade-in">
+
+          {/* Logo — always visible at top of form panel */}
+          <div className="flex items-center gap-3 mb-8">
+            <AssignSmartLogo size={48} variant="icon" />
+            <span className="font-heading text-2xl font-bold text-ink tracking-tight">AssignSmart</span>
           </div>
 
-          {/* Google button */}
+          <h1 className="font-heading text-[2.4rem] font-semibold text-ink leading-tight mb-1">
+            {mode === "login" ? "Welcome back." : "Get started."}
+          </h1>
+          <p className="text-mist text-sm mb-7">
+            {mode === "login"
+              ? "Sign in to your classroom."
+              : "Create your teacher or student account."}
+          </p>
+
+          {/* Google */}
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-4 disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-3 rounded-xl py-3 text-sm font-semibold text-slate-200 transition-all duration-200 mb-5 disabled:opacity-60" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -80,10 +128,10 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400">or</span>
-            <div className="flex-1 h-px bg-gray-200" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-sand" />
+            <span className="text-xs text-mist font-bold tracking-widest">OR</span>
+            <div className="flex-1 h-px bg-sand" />
           </div>
 
           {/* Form */}
@@ -96,22 +144,21 @@ export default function LoginPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Full name"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="input-field"
                 />
-                {/* Role toggle */}
                 <div className="grid grid-cols-2 gap-2">
                   {(["student", "teacher"] as UserRole[]).map((r) => (
                     <button
                       key={r}
                       type="button"
                       onClick={() => setRole(r)}
-                      className={`py-2 rounded-xl text-sm font-medium transition-colors capitalize ${
+                      className={`py-2.5 rounded-xl text-sm font-bold transition-all duration-200 border ${
                         role === r
-                          ? "bg-brand-500 text-white"
-                          : "bg-gray-100 text-gray-600"
+                          ? "bg-green-500 text-white border-green-500 shadow-glass-sm"
+                          : "bg-white/5 text-mist border-white/10 hover:border-green-500/40 hover:text-ink"
                       }`}
                     >
-                      {r === "teacher" ? "👩‍🏫 Teacher" : "🎒 Student"}
+                      {r === "teacher" ? "Teacher" : "Student"}
                     </button>
                   ))}
                 </div>
@@ -124,7 +171,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="input-field"
             />
             <input
               type="password"
@@ -133,31 +180,33 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="input-field"
             />
 
             {error && (
-              <p className="text-red-500 text-xs">{error}</p>
+              <p className="text-red-400 text-xs font-semibold rounded-xl px-3 py-2.5" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>
+                {error}
+              </p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
+              className="btn-primary w-full mt-1"
             >
               {loading
-                ? "Please wait..."
+                ? "Please wait…"
                 : mode === "login"
                 ? "Sign In"
                 : "Create Account"}
             </button>
           </form>
 
-          <p className="text-center text-xs text-gray-500 mt-4">
+          <p className="text-center text-xs text-mist mt-6">
             {mode === "login" ? "Don't have an account? " : "Already have an account? "}
             <button
               onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null); }}
-              className="text-brand-500 font-medium hover:underline"
+              className="text-green-400 font-bold hover:underline underline-offset-2"
             >
               {mode === "login" ? "Sign up" : "Sign in"}
             </button>

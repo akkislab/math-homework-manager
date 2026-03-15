@@ -1,105 +1,222 @@
-# MathClass — AI-Powered Math Homework Platform
+# AssignSmart — AI Math Homework Platform
 
-A full-stack, cloud-deployed math homework platform built on Google Firebase.
+> AI-powered worksheets, instant grading, and real-time classroom progress tracking — built for modern math classrooms.
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-math--homework--management.web.app-green?style=flat-square)](https://math-homework-management.web.app)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square)](https://nextjs.org/)
+[![Firebase](https://img.shields.io/badge/Firebase-10-orange?style=flat-square)](https://firebase.google.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square)](https://www.typescriptlang.org/)
+
+---
+
+## Overview
+
+AssignSmart is a full-stack SaaS platform that helps math teachers manage classes, generate AI-powered worksheets, track student progress in real time, and automate grading — all from a single dashboard.
+
+---
 
 ## Features
 
-| Feature | Details |
-|---------|---------|
-| AI Worksheet Generation | One Claude API call generates problems + personalizes PDFs for every student |
-| Teacher Dashboard | Student list, progress charts, bulk assign, submission review with grading |
-| Student Portal | View assignments, drag-and-drop submission upload, instant grade notifications |
-| Badge System | Automatic badges for streaks, perfect scores, completion milestones, project |
-| In-App Notifications | Real-time Firestore listeners — no email/SMS cost |
-| Deadline Reminders | Scheduled Cloud Function runs daily at 08:00 UTC |
+### For Teachers
+- **AI Worksheet Generation** — Describe a topic and grade; Claude AI writes personalised problems + generates a PDF per student
+- **File Assignments** — Upload PDF/image and assign to an entire batch with one click
+- **Batch Management** — Create multiple classes, add/remove students by email, move between batches
+- **Submission Review** — View uploads, see AI-suggested grades, edit and confirm scores
+- **Real-Time Dashboard** — Live submitted/pending counters update instantly as students submit
+- **Calendar** — Schedule and visualise class sessions with a time-positioned week view
+- **Student Progress Page** — Per-student score trends, bar charts, assignment history with status filters
+- **Notifications** — In-app bell with unread count for every key event
+
+### For Students
+- **Assignment Portal** — See all pending, submitted, and graded work in one place
+- **File Upload** — Drag-and-drop submission (PDF, image, text)
+- **Grades** — Score visible only after teacher confirmation
+- **Badges** — 9 unlockable achievement badges for motivation and engagement
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS |
+| Backend | Firebase Cloud Functions v2, Node.js 20 |
+| Database | Cloud Firestore |
+| Auth | Firebase Authentication + custom role claims |
+| Storage | Firebase Storage |
+| AI | Anthropic Claude (`claude-opus-4-6` worksheets, `claude-haiku-4-5` grading) |
+| PDF | PDFKit |
+| Charts | Recharts |
+
+---
 
 ## Project Structure
 
 ```
 math-homework-platform/
-├── firebase.json              Firebase config (hosting, functions, firestore, storage)
-├── firestore.rules            Security rules
-├── firestore.indexes.json     Composite indexes
-├── storage.rules              Storage access control
-├── DEPLOY.md                  Step-by-step deployment guide
-├── COST_OPTIMIZATION.md       Cost analysis and optimization strategies
-│
-├── functions/                 Cloud Functions (Node.js 20, TypeScript)
+├── frontend/                  # Next.js 14 application
+│   ├── src/
+│   │   ├── app/               # Pages (App Router)
+│   │   │   ├── login/
+│   │   │   ├── onboarding/
+│   │   │   ├── teacher/
+│   │   │   │   ├── dashboard/
+│   │   │   │   ├── students/
+│   │   │   │   ├── worksheets/
+│   │   │   │   ├── calendar/
+│   │   │   │   └── progress/
+│   │   │   └── student/
+│   │   │       ├── portal/
+│   │   │       └── badges/
+│   │   ├── components/
+│   │   │   ├── shared/        # Navbar, AuthGuard, Toast, Spinner, AssignSmartLogo
+│   │   │   ├── teacher/       # Dashboard, WorksheetGenerator, SubmissionReview, CalendarView, ProgressChart
+│   │   │   └── student/       # Portal
+│   │   ├── hooks/             # useAuth
+│   │   ├── lib/               # firebase.ts, firestore.ts, api.ts
+│   │   └── types/             # index.ts — all TypeScript interfaces
+│   └── public/                # Static assets (logo files)
+├── functions/                 # Firebase Cloud Functions
 │   └── src/
-│       ├── index.ts           All function exports
-│       ├── worksheetGenerator.ts  AI generation + batch PDF creation
-│       ├── pdfGenerator.ts    PDFKit-based worksheet PDF builder
-│       ├── badgeService.ts    Automatic badge evaluation engine
-│       └── types.ts           Shared TypeScript types
-│
-└── frontend/                  Next.js 14 App Router (TypeScript + Tailwind)
-    └── src/
-        ├── app/               Pages
-        │   ├── page.tsx           Root redirect
-        │   ├── login/page.tsx     Auth page (email + Google)
-        │   ├── teacher/dashboard/ Teacher dashboard page
-        │   └── student/portal/    Student portal page
-        ├── components/
-        │   ├── teacher/
-        │   │   ├── Dashboard.tsx        Full teacher dashboard
-        │   │   ├── WorksheetGenerator.tsx  AI worksheet form
-        │   │   ├── SubmissionReview.tsx    Grade + feedback UI
-        │   │   └── ProgressChart.tsx       Recharts visualizations
-        │   ├── student/
-        │   │   └── Portal.tsx           Assignments + badges + notifications
-        │   └── shared/
-        │       ├── Navbar.tsx           Top nav with notification badge
-        │       └── AuthGuard.tsx        Role-based route protection
-        ├── hooks/useAuth.ts     Firebase Auth hook + register/login helpers
-        ├── lib/
-        │   ├── firebase.ts      Firebase app initialization
-        │   ├── api.ts           Typed callable function wrappers
-        │   └── firestore.ts     Typed Firestore query helpers
-        └── types/index.ts       All TypeScript domain types
+│       ├── index.ts           # 13 exported functions
+│       ├── worksheetGenerator.ts
+│       ├── pdfGenerator.ts
+│       ├── autoGrader.ts
+│       └── badgeService.ts
+├── docs/                      # Full documentation
+├── tests/                     # Unit and automation tests
+├── firestore.rules
+├── storage.rules
+├── firebase.json
+└── README.md
 ```
 
-## Quick Start
+---
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 20+
+- Firebase CLI: `npm install -g firebase-tools`
+- Firebase project with Firestore, Auth, Storage, and Functions enabled
+- Anthropic API key
+
+### 1. Clone
 
 ```bash
-# 1. Clone and install
-git clone <repo>
+git clone https://github.com/YOUR_USERNAME/math-homework-platform.git
 cd math-homework-platform
-
-# 2. Install all dependencies
-(cd functions && npm install)
-(cd frontend && npm install)
-
-# 3. Configure environment
-cp .env.example frontend/.env.local
-# Edit frontend/.env.local with your Firebase config
-
-# 4. Start local emulators + dev server
-firebase emulators:start &
-cd frontend && NEXT_PUBLIC_USE_EMULATORS=true npm run dev
 ```
 
-See DEPLOY.md for full production deployment steps.
+### 2. Configure Firebase
 
-## Tech Stack
-
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts
-- **Backend**: Firebase Cloud Functions v2 (Node.js 20)
-- **Database**: Cloud Firestore
-- **Storage**: Firebase Storage
-- **Auth**: Firebase Authentication (email + Google)
-- **AI**: Anthropic Claude API (`@anthropic-ai/sdk`)
-- **PDF**: PDFKit (server-side, no headless browser)
-- **Hosting**: Firebase Hosting (static export)
-
-## Firestore Data Model
-
+```bash
+firebase login
+firebase use --add   # select your project
 ```
-users/{uid}              UserProfile (role, displayName, classId)
-classes/{classId}        Class (teacherId, studentIds, name)
-worksheets/{id}          Worksheet template (problems, topic, grade, answerKeyUrl)
-assignments/{id}         Assignment (worksheetId, studentId, dueDate, status)
-submissions/{id}         Submission (fileUrl, grade, feedback, status)
-notifications/{id}       In-app notification (userId, type, read)
-badges/{id}              Badge definition
-studentBadges/{uid}/earned/{badgeId}  Earned badges
+
+### 3. Environment variables
+
+**Frontend** — `frontend/.env.local`:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 ```
+
+**Functions** — `functions/.secret.local`:
+```env
+ANTHROPIC_API_KEY=your_key_here
+```
+
+### 4. Install dependencies
+
+```bash
+cd frontend && npm install
+cd ../functions && npm install
+```
+
+### 5. Run emulators
+
+```bash
+firebase emulators:start
+```
+
+Ports: Auth `9099` · Firestore `8080` · Functions `5001` · Hosting `5000` · Storage `9199` · UI `4000`
+
+### 6. Start dev server
+
+```bash
+cd frontend && npm run dev   # http://localhost:3000
+```
+
+---
+
+## Deployment
+
+```bash
+# Frontend only
+cd frontend && npm run build
+firebase deploy --only hosting
+
+# Functions only
+firebase deploy --only functions
+
+# Everything
+cd frontend && npm run build && cd .. && firebase deploy
+```
+
+---
+
+## Teacher Workflow
+
+1. Sign up → select **Teacher** role on onboarding
+2. Create a class (name, type, schedule)
+3. Add students by email address
+4. Create assignment: choose **AI Worksheet** or **File Upload** → set deadline → Assign
+5. Monitor live submission counters on the dashboard
+6. **View Submissions** → review uploads → edit grade → Confirm
+7. Track per-student trends on the **Progress** page
+
+## Student Workflow
+
+1. Sign up → select **Student** role
+2. Open **My Assignments** on the portal
+3. Click an assignment → drag-drop file → Submit
+4. Check back for grade (visible after teacher confirms)
+5. Earn badges on the **Badges** page
+
+---
+
+## Running Tests
+
+```bash
+# Unit tests
+cd tests && npm install && npm test
+
+# Automation tests
+cd tests/automation && npm install && npm run test:e2e
+```
+
+See `tests/` for full test documentation and results.
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/your-feature`
+3. Commit with conventional messages: `feat:`, `fix:`, `docs:`, `test:`
+4. Run `npx tsc --noEmit` to verify TypeScript before opening a PR
+5. Open a pull request against `main`
+
+---
+
+## Support
+
+- Issues: open a GitHub issue
+- Live app: [https://math-homework-management.web.app](https://math-homework-management.web.app)

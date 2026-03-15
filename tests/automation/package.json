@@ -1,0 +1,15 @@
+{
+  "name": "assignsmart-automation-tests",
+  "version": "1.0.0",
+  "description": "Playwright end-to-end automation tests for AssignSmart",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "typescript": "^5.4.0"
+  }
+}

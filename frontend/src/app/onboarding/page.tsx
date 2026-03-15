@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../hooks/useAuth";
 import { setUserRole } from "../../lib/api";
+import AssignSmartLogo from "../../components/shared/AssignSmartLogo";
 import type { UserRole } from "../../types";
 
 export default function OnboardingPage() {
@@ -29,11 +30,14 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
+      <div className="w-full max-w-md rounded-3xl shadow-glass-lg p-8 backdrop-blur-xl border border-white/10" style={{ background: 'rgba(15,23,42,0.96)' }}>
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">👋</div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome to MathClass!</h1>
-          <p className="text-sm text-gray-500 mt-1">Tell us who you are to get started</p>
+          <div className="flex items-center justify-center gap-2.5 mb-4">
+            <AssignSmartLogo size={40} className="rounded-xl" />
+            <span className="font-heading text-xl font-bold text-ink tracking-tight">AssignSmart</span>
+          </div>
+          <h1 className="text-2xl font-bold text-ink">Welcome aboard! 👋</h1>
+          <p className="text-sm text-mist mt-1">Tell us who you are to get started</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -43,15 +47,15 @@ export default function OnboardingPage() {
               onClick={() => setRole(r)}
               className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
                 role === r
-                  ? "border-brand-500 bg-brand-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  ? "border-green-500 bg-green-500/10"
+                  : "border-white/10 hover:border-white/20"
               }`}
             >
               <span className="text-4xl">{r === "teacher" ? "👩‍🏫" : "🎒"}</span>
-              <span className={`font-semibold capitalize ${role === r ? "text-brand-600" : "text-gray-700"}`}>
+              <span className={`font-semibold capitalize ${role === r ? "text-green-400" : "text-slate-300"}`}>
                 {r}
               </span>
-              <span className="text-xs text-gray-400 text-center">
+              <span className="text-xs text-slate-500 text-center">
                 {r === "teacher"
                   ? "Create worksheets & manage students"
                   : "View assignments & submit work"}
@@ -65,7 +69,7 @@ export default function OnboardingPage() {
         <button
           onClick={handleContinue}
           disabled={loading}
-          className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-medium py-3 rounded-xl transition-colors"
+          className="w-full bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-medium py-3 rounded-xl transition-colors"
         >
           {loading ? "Setting up..." : "Continue as " + role.charAt(0).toUpperCase() + role.slice(1)}
         </button>

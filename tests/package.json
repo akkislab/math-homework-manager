@@ -1,0 +1,16 @@
+{
+  "name": "assignsmart-tests",
+  "version": "1.0.0",
+  "description": "Unit tests for AssignSmart platform",
+  "private": true,
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
